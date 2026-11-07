@@ -61,7 +61,7 @@ fun HomeScreen(
                     )
                 }
 
-                // 🔵 Clickable Avatar Circle
+                // Clickable Avatar Circle
                 Box(
                     modifier = Modifier
                         .size(44.dp)

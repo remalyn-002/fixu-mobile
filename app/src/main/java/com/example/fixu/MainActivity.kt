@@ -3,6 +3,7 @@ package com.example.fixu
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
@@ -12,7 +13,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import com.example.fixu.models.Ticket
+import com.example.fixu.models.FixuViewModel
 import com.example.fixu.models.TicketStatus
 import com.example.fixu.models.UserData
 import com.example.fixu.ui.screens.*
@@ -20,6 +21,10 @@ import com.example.fixu.ui.theme.DarkSurface
 import com.example.fixu.ui.theme.FixUTheme
 
 class MainActivity : ComponentActivity() {
+
+    // Initialize the ViewModel using the activity-ktx delegate
+    private val viewModel: FixuViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -44,13 +49,8 @@ class MainActivity : ComponentActivity() {
                     )
                 }
 
-                val sampleTickets = remember {
-                    mutableStateListOf(
-                        Ticket("1", "Plumbing", "ST Building 3rd Flr Restroom", "Leaking faucet in corner sink.", "Remalyn Abad", "10 mins ago", TicketStatus.PENDING, 3),
-                        Ticket("2", "Electrical", "CS Lab 2", "Projector power outlet non-responsive.", "Student #2022019", "1 hour ago", TicketStatus.IN_PROGRESS, 7),
-                        Ticket("3", "HVAC", "Library 2nd Floor", "AC unit blowing warm air.", "Student #2023112", "Yesterday", TicketStatus.RESOLVED, 12)
-                    )
-                }
+                // Pull ticket state directly from the ViewModel
+                val tickets = viewModel.tickets
 
                 if (!isLoggedIn) {
                     AuthScreen(onLoginSuccess = { adminRole: Boolean, userData: UserData ->
@@ -61,12 +61,9 @@ class MainActivity : ComponentActivity() {
                     })
                 } else if (isAdmin) {
                     AdminScreen(
-                        tickets = sampleTickets,
+                        tickets = tickets,
                         onStatusChange = { ticketId, newStatus ->
-                            val index = sampleTickets.indexOfFirst { it.id == ticketId }
-                            if (index != -1) {
-                                sampleTickets[index] = sampleTickets[index].copy(status = newStatus)
-                            }
+                            viewModel.updateTicketStatus(ticketId, newStatus)
                         },
                         onLogout = { isLoggedIn = false }
                     )
@@ -104,39 +101,27 @@ class MainActivity : ComponentActivity() {
                         Surface(modifier = Modifier.padding(innerPadding)) {
                             when (selectedTab) {
                                 0 -> HomeScreen(
-                                    tickets = sampleTickets,
+                                    tickets = tickets,
                                     currentUserName = currentUser.fullName,
                                     onUpvote = { ticketId ->
-                                        val index = sampleTickets.indexOfFirst { it.id == ticketId }
-                                        if (index != -1) {
-                                            sampleTickets[index] = sampleTickets[index].copy(
-                                                upvotes = sampleTickets[index].upvotes + 1
-                                            )
-                                        }
+                                        viewModel.upvoteTicket(ticketId)
                                     },
                                     onSubmitTicket = { cat, loc, desc, photo ->
-                                        sampleTickets.add(
-                                            0,
-                                            Ticket(
-                                                id = (sampleTickets.size + 1).toString(),
-                                                category = cat,
-                                                location = loc,
-                                                description = desc,
-                                                reportedBy = currentUser.fullName,
-                                                timestamp = "Just now",
-                                                status = TicketStatus.PENDING,
-                                                upvotes = 1,
-                                                hasPhoto = photo
-                                            )
+                                        viewModel.addNewTicket(
+                                            category = cat,
+                                            location = loc,
+                                            description = desc,
+                                            reportedBy = currentUser.fullName,
+                                            hasPhoto = photo
                                         )
                                     }
                                 )
                                 1 -> RequestsScreen(
-                                    tickets = sampleTickets,
+                                    tickets = tickets,
                                     currentUserName = currentUser.fullName
                                 )
                                 2 -> AlertsScreen(
-                                    tickets = sampleTickets,
+                                    tickets = tickets,
                                     currentUserName = currentUser.fullName
                                 )
                                 3 -> ProfileScreen(
